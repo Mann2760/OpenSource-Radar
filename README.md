@@ -1,67 +1,81 @@
-# OpenSource Radar
+# OpenSource Radar — Contribution Intelligence Tool
 
-OpenSource Radar helps developers find open-source GitHub issues, judge contribution fit using issue metadata, bookmark opportunities, and track each contribution from discovery through pull-request completion.
+OpenSource Radar helps developers discover public GitHub issues, evaluate contribution opportunities using maintainer-provided issue labels, save issues, and track progress through a contribution workflow.
 
-## Live demo and source repository
+> **Live demo:** `PASTE_YOUR_VERCEL_PRODUCTION_URL_HERE`  
+> **Source code:** https://github.com/Mann2760/OpenSource-Radar
 
-- **Deployed app:** Add your deployed URL here after completing the deployment steps in [`DEPLOYMENT.md`](DEPLOYMENT.md).
-- **GitHub repository:** Add your public repository URL here after pushing the source.
+Replace the live-demo placeholder with the exact Production URL shown in Vercel before submitting.
 
-These links are intentionally not fabricated. Deployment and repository publishing require access to your hosting and GitHub accounts.
+## Problem statement
+
+Finding a suitable open-source issue can involve searching across repositories, understanding issue labels, and keeping track of opportunities and pull requests. OpenSource Radar brings issue discovery and personal contribution tracking into one interface.
 
 ## Features
 
-- Searches public issues using the GitHub Search Issues API.
-- Search with GitHub query syntax, and paginate through results (GitHub's issue-search result window is limited to 1,000 results).
-- Filter the currently loaded results by repository, language, labels, difficulty classification, and contribution status.
-- Bookmark issues and maintain a local contribution record with notes, issue URL, PR URL, and status.
-- Track the workflow: **Interested → In Progress → PR Submitted → Completed**.
-- Dashboard summaries by contribution status and repository.
-- Loading, empty, retry, timeout, invalid-query, and rate-limit states.
-- Short-lived API response cache and six-hour repository-language cache to reduce unnecessary requests.
-- Responsive layout and accessible labels for key controls.
+- Fetches public issues and pull requests through GitHub's Search Issues API.
+- Search and pagination for issue discovery.
+- Filters for repository, programming language, labels, difficulty, and contribution status, as implemented in the app.
+- Bookmarks and personal contribution records.
+- Contribution stages: **Interested**, **In Progress**, **PR Submitted**, and **Completed**.
+- Issue and pull-request URLs and notes in contribution records, where supported by the interface.
+- Dashboard summaries by status and repository.
+- Loading, empty, retry, validation, timeout, and rate-limit handling.
+- Short-lived in-memory API response caching and repository-language caching.
+- Responsive interface.
+- Rule-based difficulty classification using recognized issue labels.
 
 ## Technology stack
 
-- React 18 and Vite 6 for the client and development server.
-- Node.js and Express 4 for the API proxy, GitHub API integration, caching, and local production serving; Vercel serves the built static assets from `public/`.
-- GitHub REST API: `GET /search/issues` and repository metadata endpoints for language information.
-- Browser `localStorage` for bookmarks and contribution tracking. There is no account system or cross-device synchronization.
-- Node's built-in test runner for unit tests.
+- **React** — user interface and client-side state.
+- **Vite** — development server and frontend build.
+- **Node.js + Express** — backend API endpoints and GitHub API integration.
+- **GitHub REST API** — issue search and repository metadata.
+- **Browser localStorage** — local bookmarks and contribution tracking.
+- **Node.js test runner** — automated tests.
+- **Vercel** — deployment.
 
-## Requirements
+## Architecture
 
-- Node.js 20 or newer.
-- npm.
-- Internet access to reach `api.github.com`.
+1. The user interacts with the React frontend.
+2. The frontend calls the application's `/api/issues` endpoint.
+3. Express validates the query, requests data from GitHub, handles upstream errors, enriches issues with repository language, and applies the difficulty-classification policy.
+4. Express returns structured JSON to the frontend.
+5. Personal bookmarks and progress records are saved in the browser's local storage.
+
+The backend is useful for centralizing validation, caching, API error handling, and optional server-side credentials. It is not strictly required for every possible implementation of a public GitHub issue browser.
 
 ## Local setup
 
-1. Clone/download this repository and enter the project directory.
-2. Install dependencies:
+### Requirements
 
-   ```bash
-   npm install
-   ```
+- Node.js 20 or newer
+- npm
+- Internet access to reach `api.github.com`
 
-3. Copy `.env.example` to `.env`. A token is optional for basic use but recommended to improve GitHub API rate limits:
+### Install and run
 
-   ```env
-   GITHUB_TOKEN=your_github_token
-   PORT=8787
-   ```
+```bash
+git clone https://github.com/Mann2760/OpenSource-Radar.git
+cd OpenSource-Radar
+npm install
+npm run dev
+```
 
-   Use a GitHub token with only the minimum public-read permissions needed. Never commit `.env` or paste your token into frontend code.
+Open the local URL printed by Vite (usually `http://localhost:5173`).
 
-4. Start both the Vite client and Express server:
+### Environment variables
 
-   ```bash
-   npm run dev
-   ```
+Copy `.env.example` to `.env` if you want to configure a GitHub token for local backend requests. A token is optional for basic public issue search, but authenticated requests generally have a higher rate limit.
 
-5. Open the local URL printed by Vite, usually `http://localhost:5173`.
+```env
+GITHUB_TOKEN=your_github_token
+PORT=8787
+```
 
-## Production build
+Use a token with only the permissions needed for public-read access. Never commit `.env`, paste a token into React code, or expose it through a `VITE_*` variable.
+
+### Test and production build
 
 ```bash
 npm test
@@ -69,37 +83,78 @@ npm run build
 npm start
 ```
 
-The Vite build writes frontend assets to `public/`. Locally, Express serves those assets and the `/api` routes from the same origin. On Vercel, the static assets are served by the CDN and the root `index.js` exports Express as a serverless Function.
+The development script starts the Vite client and Express server. Review `package.json` if scripts change.
 
 ## API integration
 
-The client calls `GET /api/issues?q=<GitHub search query>&page=<n>&per_page=<n>`. The server calls GitHub's `GET https://api.github.com/search/issues`, requests up to 30 results per page, returns GitHub's `incomplete_results` flag and rate-limit information, and caps page numbers to the supported search window. Responses are cached in memory for 60 seconds. Repository language is not included in issue-search results, so the server enriches results from repository metadata and caches those lookups for six hours. Failed metadata lookups leave language unknown instead of failing the entire issue search.
+### `GET /api/health`
 
-`GET /api/health` reports whether the server is running and whether a token is configured; it does not expose the token. The server maps rate-limit responses to HTTP 429 and handles upstream timeouts/network failures with a useful error message.
+Returns a health response indicating whether the backend is running and whether a GitHub token is configured. The token itself is never returned.
+
+Example:
+
+```json
+{
+  "ok": true,
+  "authenticated": false
+}
+```
+
+`authenticated: false` means no `GITHUB_TOKEN` is configured; it does not mean the backend is broken.
+
+### `GET /api/issues`
+
+Accepts a GitHub search query and pagination parameters, for example:
+
+```text
+/api/issues?q=is%3Aopen%20is%3Aissue&page=1&per_page=12
+```
+
+The server calls GitHub's Search Issues endpoint, maps issue data into a frontend-friendly shape, and returns pagination and rate-limit metadata. GitHub Search has a 1,000-result window, so pagination cannot traverse an unlimited number of search results.
+
+Repository language is not included in the issue-search payload, so the server requests repository metadata separately. Language lookup failures leave the language unknown rather than discarding the issue.
+
+### Caching and errors
+
+- Issue search responses are cached in memory for 60 seconds.
+- Repository-language metadata is cached in memory for six hours.
+- Cache contents disappear when a server instance restarts; separate serverless instances may have separate caches.
+- Overlong search queries are rejected.
+- GitHub rate-limit responses are translated into a rate-limit response with guidance.
+- Upstream timeouts and network failures return a useful error response.
+- Cached data may be briefly stale.
 
 ## Difficulty classification policy
 
-Difficulty is not inferred from issue title, stars, repository popularity, or an arbitrary score. It is assigned only when an issue has a recognized label:
+Difficulty is a deterministic label-based heuristic, not an AI model and not a guarantee of actual task complexity.
 
-- **Beginner:** label contains `good first issue`, `first-timers-only`, `beginner`, `easy`, or `starter issue`.
-- **Intermediate:** label contains `intermediate`, `medium difficulty`, or `moderate`.
-- **Advanced:** label contains `hard`, `advanced`, `difficult`, or `expert`.
-- **Unclassified:** no recognized label exists.
+- **Beginner:** recognized labels include `good first issue`, `first-timers-only`, `beginner`, `easy`, or `starter issue`.
+- **Intermediate:** recognized labels include `intermediate`, `medium difficulty`, or `moderate`.
+- **Advanced:** recognized labels include `hard`, `advanced`, `difficult`, or `expert`.
+- **Unclassified:** no recognized difficulty label is present.
 
-If labels conflict, the current policy prioritizes Beginner, then Intermediate, then Advanced. This is a deterministic heuristic, not a universal truth; repositories use labels differently. Review an issue and its contribution guide before choosing it.
+The current precedence when recognized labels conflict is Beginner, then Intermediate, then Advanced. Repository maintainers use labels differently, so users should read the issue and contribution guide before choosing work. See `server/difficulty.js` for the actual implementation.
 
-## Data and privacy limitations
+## Persistence and limitations
 
-Bookmarks and contribution records are saved in the current browser's `localStorage`. Clearing browser data can remove them, and records do not follow a user to another device. GitHub issue content is fetched live. The app does not submit pull requests or change GitHub issues; it records progress and URLs only. The in-memory server cache resets when the server restarts.
+Bookmarks and contribution records are stored in the current browser's `localStorage`. They persist across page refreshes in that browser but do not synchronize across devices or browsers. Clearing site data may remove them.
+
+The app tracks contribution progress; it does not create pull requests or modify GitHub issues on the user's behalf. The in-memory server cache is not shared between serverless instances.
 
 ## Testing
 
-Run `npm test`. Test scenarios and a manual verification checklist are documented in [`TESTING.md`](TESTING.md). Record the actual outcome of manual tests on the machine/browser used for final evaluation; do not mark a manual test passed without performing it.
+Run automated tests with:
 
-## AI-assisted development disclosure
+```bash
+npm test
+```
 
-See [`AI_WORKFLOW.md`](AI_WORKFLOW.md) for the AI tool disclosure, development workflow, review/refinement changes, and limitations. For a file-by-file walkthrough and interview preparation, read [`INTERVIEW_GUIDE.md`](INTERVIEW_GUIDE.md). AI assistance was used to scaffold and refine code/documentation; the submitted implementation should be reviewed and understood by the submitter.
+See [`TESTING.md`](./TESTING.md) for automated cases, manual acceptance checks, and the refinement log. Manual checks must be marked with their actual observed result before submission.
+
+## AI-assisted development
+
+See [`AI_WORKFLOW.md`](./AI_WORKFLOW.md) for the AI tools disclosure, workflow, review process, and refinements. Only report tools and changes that accurately reflect your work.
 
 ## Deployment
 
-Follow [`DEPLOYMENT.md`](DEPLOYMENT.md) to publish the source on GitHub and deploy the app to Vercel. Replace the live-demo and repository placeholders at the top of this README once the actual URLs exist.
+The application is deployed on Vercel. Replace the live-demo placeholder at the top of this README with the exact production URL and verify the live homepage, `/api/health`, and `/api/issues` before submitting.

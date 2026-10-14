@@ -1,76 +1,78 @@
-# Testing and verification plan
+# Testing and verification
+
+This document separates automated tests from manual acceptance tests. A successful build or health endpoint does not prove every user-facing feature works.
+
+## Environment
+
+- Application: OpenSource Radar
+- Automated test command: `npm test`
+- Production build command: `npm run build`
+- Deployed health endpoint: verified during deployment troubleshooting; response observed:
+  `{"ok":true,"authenticated":false}`
+- Live production URL: add the exact Vercel URL here.
 
 ## Automated tests
 
-Run from the project root:
+Run:
 
 ```bash
 npm test
 ```
 
-The Node test suite currently covers seven difficulty-policy cases and imports the actual production classifier from `server/difficulty.js`:
+The current Node test suite covers the difficulty policy. Check the test output and update the result column after running it against the final committed version.
 
-| ID | Scenario | Expected result |
-|---|---|---|
-| UNIT-01 | Label is `good first issue` | Beginner |
-| UNIT-02 | Label is `advanced` | Advanced |
-| UNIT-03 | Only labels such as `bug` and `help wanted` are present | Unclassified, not guessed |
-| UNIT-04 | Both `advanced` and `easy` labels are present | Beginner under the documented precedence rule |
-| UNIT-05 | Label uses different capitalization and whitespace | Still matches Beginner |
-| UNIT-06 | Labels are absent, null, or malformed | Safely returns Unclassified |
-| UNIT-07 | Label is `medium difficulty` | Intermediate |
-
-The tests import the same classifier module used by the server, avoiding a duplicated implementation in the test file. They run without live GitHub requests.
-
-## Manual acceptance test cases
-
-Run these against a locally running app or the deployed URL and fill in the Result column with the observed outcome. The project should not claim these manual tests passed until they have actually been performed.
-
-| ID | Steps | Expected result | Result / notes |
+| ID | Scenario | Expected result | Result |
 |---|---|---|---|
-| MAN-01 | Open the app with a working network connection | Loading resolves to issues or a useful empty/error state; no endless spinner | Not run here |
-| MAN-02 | Search a valid query such as `is:open is:issue label:documentation` | Results correspond to the query and each issue links to GitHub | Not run here |
-| MAN-03 | Enter a query longer than 240 characters through the API | API returns HTTP 400 with a validation message | Not run here |
-| MAN-04 | Use repository filter with `owner/repo` or a partial name | Visible results narrow to matching repository names | Not run here |
-| MAN-05 | Choose a programming language | Only results with matching repository-language metadata remain | Not run here |
-| MAN-06 | Filter by a label fragment | Results without a matching label are hidden | Not run here |
-| MAN-07 | Select each difficulty option | Explicitly labelled issues classify according to policy; others remain Unclassified | Not run here |
-| MAN-08 | Bookmark an issue, reload the page, open Saved | Bookmark remains in this browser | Not run here |
-| MAN-09 | Track an issue and move it through all four statuses | Dashboard counts/status update and remain after reload | Not run here |
-| MAN-10 | Save a valid GitHub PR URL and a note to a contribution record | Values are saved and can be reopened | Not run here |
-| MAN-11 | Try malformed/non-GitHub issue or PR URL in the record editor | Input is rejected or validation feedback is shown; invalid data is not silently accepted | Not run here |
-| MAN-12 | Navigate forward and back through issue pages | Page changes, controls disable at boundaries, and no duplicate/incorrect page state appears | Not run here |
-| MAN-13 | Trigger/observe GitHub 403 or 429 rate limiting | Clear rate-limit message appears with retry guidance; app remains usable | Not run here |
-| MAN-14 | Disconnect network or simulate a slow GitHub response | Error/timeout state appears and retry is available | Not run here |
-| MAN-15 | Search a query with zero matching issues | Empty state appears without a crash | Not run here |
-| MAN-16 | Put malformed JSON in the app's localStorage key and reload | App recovers without crashing; user may need to recreate local records | Not run here |
-| MAN-17 | Resize viewport to mobile width and navigate by keyboard | Layout remains usable; key controls have labels and visible focus | Not run here |
-| MAN-18 | Run `npm run build` then `npm start` | Production build serves the app and `/api/health` responds | Not run here |
+| UNIT-01 | Label is `good first issue` | Beginner | Record after run |
+| UNIT-02 | Label is `advanced` | Advanced | Record after run |
+| UNIT-03 | Only unrelated labels such as `bug` are present | Unclassified | Record after run |
+| UNIT-04 | Beginner and Advanced labels both appear | Beginner under documented precedence | Record after run |
+| UNIT-05 | Label uses different capitalization or whitespace | Recognized label still matches | Record after run |
+| UNIT-06 | Labels are absent or malformed | Safe Unclassified fallback | Record after run |
+| UNIT-07 | Label is `medium difficulty` | Intermediate | Record after run |
 
-## Refinement log: issues identified and addressed
+## Manual acceptance tests
 
-The following are implementation-level fixes made during development; the manual table above remains unverified until exercised in a browser.
+Run these against the deployed app in a browser. Mark each as **PASS**, **FAIL**, or **NOT RUN**, and add brief evidence/notes. Do not mark untested cases as passed.
 
-1. **Unbounded user query input:** API search queries longer than 240 characters are rejected with HTTP 400 instead of being forwarded upstream.
-2. **Unclear upstream failures:** GitHub rate-limit errors are mapped to HTTP 429, upstream timeouts and connection failures return actionable messages, and the client exposes a retry action.
-3. **Arbitrary difficulty scoring:** classification is based on documented issue-label patterns; missing or ambiguous metadata is shown as Unclassified.
-4. **Missing language metadata:** because GitHub's issue-search response does not include repository language, repository metadata is fetched separately and cached; failed lookups do not discard issue results.
-5. **Pagination boundary:** page number and page size are bounded, and the interface notes GitHub's 1,000-result search limit.
-6. **Corrupt browser storage:** local-storage parsing is guarded so invalid JSON does not prevent the app from loading.
-7. **Invalid contribution URLs:** issue/PR URL validation is included in the contribution-record workflow.
-8. **Test drift risk:** difficulty classification was extracted into `server/difficulty.js` and tests now import that exact function instead of maintaining a duplicate copy. Additional cases cover malformed labels and normalization.
+| ID | Test | Expected result | Actual result / evidence |
+|---|---|---|---|
+| MAN-01 | Open the production homepage | UI loads without a blocking error | NOT RUN |
+| MAN-02 | Open `/api/health` | JSON includes `ok: true` | PASS — observed `{"ok":true,"authenticated":false}` |
+| MAN-03 | Search for `is:open is:issue` | Issues load, or a useful API error appears | NOT RUN |
+| MAN-04 | Search for a query with no matching issues | Clear empty state; no crash | NOT RUN |
+| MAN-05 | Apply repository filter | Visible results match the selected repository | NOT RUN |
+| MAN-06 | Apply language filter | Results use matching repository-language metadata | NOT RUN |
+| MAN-07 | Apply label and difficulty filters | Results reflect selected filters and documented policy | NOT RUN |
+| MAN-08 | Change page and navigate back | Correct page/results; pagination remains coherent | NOT RUN |
+| MAN-09 | Bookmark an issue and refresh | Bookmark persists in the same browser | NOT RUN |
+| MAN-10 | Change status through all four stages and refresh | Status persists; dashboard updates | NOT RUN |
+| MAN-11 | Save a valid GitHub issue URL and PR URL | Values are accepted and shown in the record | NOT RUN |
+| MAN-12 | Enter an invalid URL in the contribution form | Validation prevents or clearly flags invalid input | NOT RUN |
+| MAN-13 | Trigger a GitHub rate-limit response or simulate it | Clear message and retry guidance; app remains usable | NOT RUN |
+| MAN-14 | Simulate network failure or slow upstream response | Useful timeout/network error and recovery path | NOT RUN |
+| MAN-15 | Put invalid JSON into the app's localStorage key and reload | App does not crash; recovery behavior is clear | NOT RUN |
+| MAN-16 | Resize to mobile width and use keyboard navigation | Layout remains usable and focus/labels are visible | NOT RUN |
+| MAN-17 | Run production build and start command | Build succeeds; app and API routes are served correctly | NOT RUN |
 
-## Environment limitations
+## Refinement log: implementation fixes
 
-Automated tests are local and deterministic; they do not prove that GitHub is reachable or that a deployed host is configured correctly. Run the production build and the manual acceptance tests on the final deployment before submission, and update this document with actual results and any defects discovered.
+The following code-level fixes are present in the project documentation/source history and should be checked against the final code before submission. They are not a substitute for recording observed manual test outcomes.
 
+1. **Unbounded search input:** the API rejects queries longer than 240 characters with HTTP 400.
+2. **Unhelpful upstream failure behavior:** GitHub rate-limit responses receive a dedicated response, while timeouts and network failures return user-readable errors.
+3. **Arbitrary difficulty assumptions:** difficulty is based on recognized labels and uses an Unclassified fallback when metadata is missing.
+4. **Missing repository-language field:** the server retrieves repository metadata separately and caches it; failed lookups leave language unknown rather than failing the whole issue request.
+5. **Unbounded pagination parameters:** page and per-page values are constrained to supported ranges; GitHub's 1,000-result search limit is documented.
+6. **Potential repeated API calls:** in-memory caches are used for issue searches and repository-language metadata.
+7. **Test drift:** the difficulty tests import the same classifier module used by the API rather than duplicating the rules in the test.
+8. **Deployment entry-point detection:** Vercel's initial Express entry-point detection error was investigated; after deployment, the health endpoint was verified. Record the exact final configuration/commit if asked.
 
-## Vercel deployment acceptance checks
+## Final verification notes
 
-- Confirm the deployment build runs `npm run build` and creates `public/index.html` plus hashed assets.
-- Confirm `/` serves the React app from Vercel static hosting.
-- Confirm `/api/health` invokes the exported Express app and returns JSON.
-- Confirm `/api/issues?q=is%3Aopen%20is%3Aissue` returns issue JSON or a correctly handled GitHub API error.
-- Confirm `GITHUB_TOKEN` is configured only as a server-side Vercel environment variable, never as a `VITE_*` variable.
-- Confirm browser refresh does not erase localStorage records in the same browser.
-- Inspect Vercel function logs for import, runtime, timeout, and upstream API errors.
+Before submission:
+
+- Run `npm test` and record the actual pass/fail output.
+- Run `npm run build` and confirm it succeeds.
+- Test the deployed homepage, issue search, filtering, pagination, saved records, dashboard, empty state, and error behavior.
+- Record at least three genuine issues discovered during your own testing, the code/UI change that fixed each, and how you verified each fix. Do not invent defects or claim a fix was tested if it was not.
