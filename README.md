@@ -2,7 +2,7 @@
 
 OpenSource Radar helps developers discover public GitHub issues, evaluate contribution opportunities using maintainer-provided issue labels, save issues, and track progress through a contribution workflow.
 
-> **Live demo:** `PASTE_YOUR_VERCEL_PRODUCTION_URL_HERE`  
+> **Live demo:** `https://open-source-radar-ytya.vercel.app/`  
 > **Source code:** https://github.com/Mann2760/OpenSource-Radar
 
 Replace the live-demo placeholder with the exact Production URL shown in Vercel before submitting.
