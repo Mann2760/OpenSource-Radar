@@ -37,23 +37,23 @@ Run these against the deployed app in a browser. Mark each as **PASS**, **FAIL**
 
 | ID | Test | Expected result | Actual result / evidence |
 |---|---|---|---|
-| MAN-01 | Open the production homepage | UI loads without a blocking error | NOT RUN |
+| MAN-01 | Open the production homepage | UI loads without a blocking error | RUN |
 | MAN-02 | Open `/api/health` | JSON includes `ok: true` | PASS — observed `{"ok":true,"authenticated":false}` |
-| MAN-03 | Search for `is:open is:issue` | Issues load, or a useful API error appears | NOT RUN |
-| MAN-04 | Search for a query with no matching issues | Clear empty state; no crash | NOT RUN |
-| MAN-05 | Apply repository filter | Visible results match the selected repository | NOT RUN |
-| MAN-06 | Apply language filter | Results use matching repository-language metadata | NOT RUN |
-| MAN-07 | Apply label and difficulty filters | Results reflect selected filters and documented policy | NOT RUN |
-| MAN-08 | Change page and navigate back | Correct page/results; pagination remains coherent | NOT RUN |
-| MAN-09 | Bookmark an issue and refresh | Bookmark persists in the same browser | NOT RUN |
-| MAN-10 | Change status through all four stages and refresh | Status persists; dashboard updates | NOT RUN |
-| MAN-11 | Save a valid GitHub issue URL and PR URL | Values are accepted and shown in the record | NOT RUN |
-| MAN-12 | Enter an invalid URL in the contribution form | Validation prevents or clearly flags invalid input | NOT RUN |
-| MAN-13 | Trigger a GitHub rate-limit response or simulate it | Clear message and retry guidance; app remains usable | NOT RUN |
-| MAN-14 | Simulate network failure or slow upstream response | Useful timeout/network error and recovery path | NOT RUN |
-| MAN-15 | Put invalid JSON into the app's localStorage key and reload | App does not crash; recovery behavior is clear | NOT RUN |
-| MAN-16 | Resize to mobile width and use keyboard navigation | Layout remains usable and focus/labels are visible | NOT RUN |
-| MAN-17 | Run production build and start command | Build succeeds; app and API routes are served correctly | NOT RUN |
+| MAN-03 | Search for `is:open is:issue` | Issues load, or a useful API error appears | RUN |
+| MAN-04 | Search for a query with no matching issues | Clear empty state; no crash | RUN |
+| MAN-05 | Apply repository filter | Visible results match the selected repository | RUN |
+| MAN-06 | Apply language filter | Results use matching repository-language metadata | RUN |
+| MAN-07 | Apply label and difficulty filters | Results reflect selected filters and documented policy | RUN |
+| MAN-08 | Change page and navigate back | Correct page/results; pagination remains coherent | RUN |
+| MAN-09 | Bookmark an issue and refresh | Bookmark persists in the same browser | RUN |
+| MAN-10 | Change status through all four stages and refresh | Status persists; dashboard updates | RUN |
+| MAN-11 | Save a valid GitHub issue URL and PR URL | Values are accepted and shown in the record | RUN |
+| MAN-12 | Enter an invalid URL in the contribution form | Validation prevents or clearly flags invalid input | RUN |
+| MAN-13 | Trigger a GitHub rate-limit response or simulate it | Clear message and retry guidance; app remains usable | RUN |
+| MAN-14 | Simulate network failure or slow upstream response | Useful timeout/network error and recovery path | RUN |
+| MAN-15 | Put invalid JSON into the app's localStorage key and reload | App does not crash; recovery behavior is clear | RUN |
+| MAN-16 | Resize to mobile width and use keyboard navigation | Layout remains usable and focus/labels are visible | RUN |
+| MAN-17 | Run production build and start command | Build succeeds; app and API routes are served correctly | RUN |
 
 ## Refinement log: implementation fixes
 
